@@ -3,6 +3,31 @@ import { useState } from 'react';
 
 export default function ReportModal() {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  // Handle file selection
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setSelectedFiles((prev) => [...prev, ...Array.from(files)]);
+  };
+
+  // Remove a file by index
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Display file names
+  const fileNames = selectedFiles.length === 0
+    ? "No files selected"
+    : `${selectedFiles.length} file(s) selected`;
+
+  // Close modal and reset files
+  const handleClose = () => {
+    setIsOpen(false);
+    setSelectedFiles([]);
+  };
 
   return (
     <>
@@ -18,62 +43,95 @@ export default function ReportModal() {
       {isOpen && (
         <div className="absolute inset-0 z-[500] bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4">
-            {/* This div has been customized by Krystian Gawecki */}
+            
+            {/* Modal header */}
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-slate-800">Report a Pothole</h2>
               <button
                 type="button"
                 className="rounded-lg bg-red-600 hover:bg-red-700 text-xl font-bold w-10 h-10"
-                onClick={() => setIsOpen(false)}
-              > X 
+                onClick={handleClose}
+              >
+                X
               </button>
             </div>
+
             <p className="text-sm text-slate-600">Pinpoint the hazard to warn others.</p>
-            
-            <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); setIsOpen(false); }}>
+
+            {/* Form */}
+            <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); handleClose(); }}>
+              
+              {/* Location */}
               <div className="flex flex-col">
-                <p
-                  className="text-slate-800"
-                > Location <span className="text-red-600"> * </span>
+                <p className="text-slate-800">
+                  Location<span className="text-red-600">*</span>
                 </p>
                 <input 
-                  type="text" 
-                  placeholder="Location Description (e.g. Right lane on 5th Ave)" 
+                  type="text"
+                  placeholder="Location Address"
                   className="w-full border border-slate-300 rounded-lg p-3 text-black focus:ring-2 focus:ring-red-500 outline-none -mt-0.5"
                   required
                 />
               </div>
+
+              {/* Severity */}
               <div className="flex flex-col">
-                <p
-                  className="text-slate-800"
-                > Severity <span className="text-red-600"> * </span>
-                </p>
+                <p className="text-slate-800">Severity</p>
                 <select 
                   className="w-full border border-slate-300 rounded-lg p-3 text-black outline-none"
-                  defaultValue="" // sets the initial value
-                  required
+                  defaultValue=""
                 >
-                  <option value="" disabled>
-                    --Select an option--
-                  </option>
+                  <option value="" disabled>--Select an option--</option>
                   <option value="minor">Minor (Bumpy)</option>
                   <option value="moderate">Moderate (Might pop a tire)</option>
                   <option value="severe">Severe (Crater)</option>
                 </select>
               </div>
+
+              {/* Image upload */}
               <div className="flex flex-col">
-                <p
-                  className="text-slate-800"
-                > Image(s)
-                </p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="w-full border border-slate-300 rounded-lg p-3 text-black outline-none"
-                ></input>
+                <p className="text-slate-800">Image(s)</p>
+                
+                {/* File input label */}
+                <label className="w-full border border-slate-300 rounded-lg p-3 text-black flex justify-between items-center cursor-pointer">
+                  {fileNames}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </label>
+
+                {/* Image previews with remove button */}
+                {selectedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedFiles.map((file, idx) => {
+                      const url = URL.createObjectURL(file);
+                      return (
+                        <div key={idx} className="relative w-16 h-16">
+                          <img
+                            src={url}
+                            alt={file.name}
+                            className="w-16 h-16 object-cover rounded-md border"
+                            onLoad={() => URL.revokeObjectURL(url)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFile(idx)}
+                            className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-red-700"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              
+
+              {/* Submit button */}
               <div className="flex gap-3 mt-2">
                 <button 
                   type="submit"
@@ -82,6 +140,7 @@ export default function ReportModal() {
                   Submit
                 </button>
               </div>
+
             </form>
           </div>
         </div>
