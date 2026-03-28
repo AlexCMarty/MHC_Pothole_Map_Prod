@@ -10,7 +10,7 @@ type LocationState =
 
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 
 
 type Props = {
@@ -111,8 +111,8 @@ export default function ReportModal({ mapLocation, onPotholeAdded }: Props) {
 
       {/* Modal Overlay */}
       {isOpen && (
-        <div className="absolute inset-0 z-[500] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4">
+        <div className="fixed inset-0 z-[500] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4 max-h-[90dvh] overflow-y-auto">
             
             {/* Modal header */}
             <div className="flex items-center justify-between">
