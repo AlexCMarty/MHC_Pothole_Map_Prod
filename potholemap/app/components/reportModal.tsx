@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import type { Pothole } from '../page';
 
 type LocationSource = 'map' | 'gps';
 type GpsState =
@@ -14,9 +15,10 @@ const API_BASE = 'http://localhost:8000';
 
 type Props = {
   mapLocation: [number, number];
+  onPotholeAdded: (pothole: Pothole) => void;
 };
 
-export default function ReportModal({ mapLocation }: Props) {
+export default function ReportModal({ mapLocation, onPotholeAdded }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [locationSource, setLocationSource] = useState<LocationSource>('map');
   const [gps, setGps] = useState<GpsState>({ status: 'idle' });
@@ -87,6 +89,8 @@ export default function ReportModal({ mapLocation }: Props) {
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const newPothole: Pothole = await res.json();
+      onPotholeAdded(newPothole);
       setSubmitState('success');
       setTimeout(closeModal, 1500);
     } catch (err) {
