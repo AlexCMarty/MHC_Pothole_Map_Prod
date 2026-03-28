@@ -124,6 +124,29 @@ export default function MapArea({ markerPosition, setMarkerPosition, potholes }:
         "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
     });
   }, []);
+  const handleDelete = async (id: number) => {
+    const token = localStorage.getItem('access_token');
+    
+    if (!confirm("Are you sure you want to resolve and remove this pothole?")) return;
+
+    try {
+      const response = await fetch(`http://localhost:8000/potholes/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'access_token': token || "" 
+        }
+      });
+
+      if (response.ok) {
+        alert("Pothole resolved!");
+        window.location.reload(); 
+      } else {
+        alert("Unauthorized or error occurred.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   return (
     <div className="w-full h-full relative z-0">
@@ -152,8 +175,34 @@ export default function MapArea({ markerPosition, setMarkerPosition, potholes }:
           setPosition={setMarkerPosition}
         />
 
-        {/* Clustered pothole markers */}
-        <PotholeClusterLayer potholes={potholes} />
+        {/* One red dot for every reported pothole */}
+        {potholes.map((p) => (
+          <Marker key={p.id} position={[p.latitude, p.longitude]} icon={potholeIcon}>
+            <Popup>
+              <strong className="text-red-600">Reported Pothole</strong>
+              {p.location_description && (
+                <><br />{p.location_description}</>
+              )}
+              <br />
+              <span className="text-slate-500 text-xs">
+                Reported {p.occurrences} time{p.occurrences !== 1 ? "s" : ""}
+              </span>
+
+              {/* ADMIN ACTION: Resolve/Delete Button */}
+              {typeof window !== 'undefined' && localStorage.getItem('access_token') && (
+                <div className="mt-3 pt-2 border-t border-slate-100 flex flex-col gap-2">
+                  
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold py-1 px-2 rounded"
+                  >
+                    Mark as Resolved
+                  </button>
+                </div>
+              )}
+            </Popup>
+          </Marker>
+        ))} 
       </MapContainer>
     </div>
   );
