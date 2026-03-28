@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import type { Pothole } from '../page';
 
 type LocationState =
   | { status: 'idle' }
@@ -11,7 +12,14 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
 const API_BASE = 'http://localhost:8000';
 
-export default function ReportModal() {
+
+type Props = {
+  mapLocation: [number, number];
+  onPotholeAdded: (pothole: Pothole) => void;
+};
+
+export default function ReportModal({ mapLocation, onPotholeAdded }: Props) {
+
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -81,6 +89,8 @@ export default function ReportModal() {
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const newPothole: Pothole = await res.json();
+      onPotholeAdded(newPothole);
       setSubmitState('success');
       setTimeout(closeModal, 1500);
     } catch (err) {
