@@ -221,6 +221,12 @@ export default function ReportModal() {
                   className="flex-1 py-3 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitState === 'submitting' ? 'Submitting…' : 'Submit Report'}
+                  {submitState === 'success' && (
+                    <p className="text-green-600 font-semibold text-center">✅ Pothole reported!</p>
+                  )}
+                  {submitState === 'error' && (
+                    <p className="text-red-600 text-sm text-center">Failed to submit. Is the API running?</p>
+                  )}
                 </button>
               </div>
 
