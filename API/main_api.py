@@ -15,25 +15,39 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# SQLAlchemy Models
+# 1. Updated SQLAlchemy Model
 class Pothole(Base):
     __tablename__ = "potholes"
     
     id = Column(Integer, primary_key=True, index=True)
     latitude = Column(Float, nullable=False, index=True)
     longitude = Column(Float, nullable=False, index=True)
+    
+    # New searchable fields
+    address = Column(String, index=True, nullable=True)
+    zip_code = Column(String, index=True, nullable=True)
+    borough = Column(String, index=True, nullable=True)
+    
+    # Kept for backward compatibility or extra notes
     location_description = Column(String, nullable=True)
+    
     first_reported = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_reported = Column(DateTime, default=datetime.utcnow, nullable=False)
     occurrences = Column(Integer, default=1, nullable=False)
 
-# Pydantic Schemas
+# 2. Updated Pydantic Schemas
 class PotholeCreate(BaseModel):
     latitude: float
     longitude: float
+    address: Optional[str] = None
+    zip_code: Optional[str] = None
+    borough: Optional[str] = None
     location_description: Optional[str] = None
 
 class PotholeUpdate(BaseModel):
+    address: Optional[str] = None
+    zip_code: Optional[str] = None
+    borough: Optional[str] = None
     location_description: Optional[str] = None
     last_reported: Optional[datetime] = None
     occurrences: Optional[int] = None
@@ -44,7 +58,11 @@ class PotholeResponse(BaseModel):
     id: int
     latitude: float
     longitude: float
-    location_description: Optional[str]
+    # We add "= None" here to prevent the "Field required" validation error
+    address: Optional[str] = None
+    zip_code: Optional[str] = None
+    borough: Optional[str] = None
+    location_description: Optional[str] = None
     first_reported: datetime
     last_reported: datetime
     occurrences: int
@@ -57,42 +75,48 @@ def get_db():
     finally:
         db.close()
 
-# FastAPI Application
-app = FastAPI(
-    title="Pothole Tracker API",
-    description="API for tracking and reporting potholes",
-    version="1.0.0"
-)
+app = FastAPI(title="Pothole Tracker API")
 
-# Endpoints
-@app.post("/potholes/", response_model=PotholeResponse, status_code=201)
-def create_pothole(pothole: PotholeCreate, db: Session = Depends(get_db)):
-    """Create a new pothole report"""
-    db_pothole = Pothole(**pothole.dict())
-    db.add(db_pothole)
-    db.commit()
-    db.refresh(db_pothole)
-    return db_pothole
-
-@app.get("/potholes/{pothole_id}", response_model=PotholeResponse)
-def get_pothole(pothole_id: int, db: Session = Depends(get_db)):
-    """Get a specific pothole by ID"""
-    pothole = db.query(Pothole).filter(Pothole.id == pothole_id).first()
-    if not pothole:
-        raise HTTPException(status_code=404, detail="Pothole not found")
-    return pothole
-
+# 3. Updated GET Endpoint with search logic
 @app.get("/potholes/", response_model=List[PotholeResponse])
 def list_potholes(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    min_occurrences: int = Query(0, ge=0),
+    borough: Optional[str] = None,
+    zip_code: Optional[str] = None,
+    address: Optional[str] = None,
+    min_occurrences: Optional[int] = Query(None, ge=0),
+    max_occurrences: Optional[int] = Query(None, ge=0),
+    sort_by_frequency: bool = False,
     db: Session = Depends(get_db)
 ):
-    """List all potholes with optional filtering"""
-    query = db.query(Pothole).filter(Pothole.occurrences >= min_occurrences)
-    potholes = query.offset(skip).limit(limit).all()
-    return potholes
+    """
+    List potholes with filters for location and occurrence count.
+    Set sort_by_frequency=True to see the most reported potholes first.
+    """
+    query = db.query(Pothole)
+
+    # Location Filters
+    if borough:
+        query = query.filter(Pothole.borough.ilike(f"%{borough}%"))
+    if zip_code:
+        query = query.filter(Pothole.zip_code == zip_code)
+    if address:
+        query = query.filter(Pothole.address.ilike(f"%{address}%"))
+
+    # Occurrence Filters
+    if min_occurrences is not None:
+        query = query.filter(Pothole.occurrences >= min_occurrences)
+    if max_occurrences is not None:
+        query = query.filter(Pothole.occurrences <= max_occurrences)
+
+    # Sorting logic
+    if sort_by_frequency:
+        query = query.order_by(Pothole.occurrences.desc())
+    else:
+        query = query.order_by(Pothole.id.asc())
+
+    return query.offset(skip).limit(limit).all()
 
 @app.put("/potholes/{pothole_id}", response_model=PotholeResponse)
 def update_pothole(
