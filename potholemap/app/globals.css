@@ -24,3 +24,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* iOS Safari zooms in on inputs with font-size < 16px — prevent that */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Remove gray tap flash on mobile browsers */
+button,
+a,
+label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
