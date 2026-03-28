@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Security, status
+from fastapi.security.api_key import APIKeyHeader
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pydantic import BaseModel, ConfigDict
@@ -67,6 +69,19 @@ class PotholeResponse(BaseModel):
     last_reported: datetime
     occurrences: int
 
+# Authentication
+API_KEY = "your_super_secret_admin_key"
+API_KEY_NAME = "access_token"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+async def get_admin_user(api_key_header: str = Security(api_key_header)):
+    if api_key_header == API_KEY:
+        return True
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, 
+        detail="Could not validate Admin credentials"
+    )
+
 # Dependency for database session
 def get_db():
     db = SessionLocal()
@@ -76,6 +91,14 @@ def get_db():
         db.close()
 
 app = FastAPI(title="Pothole Tracker API")
+
+#Allows comm with frontend.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For hackathons, allowing all is fine
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 3. Updated GET Endpoint with search logic
 @app.get("/potholes/", response_model=List[PotholeResponse])
@@ -122,7 +145,9 @@ def list_potholes(
 def update_pothole(
     pothole_id: int,
     pothole_update: PotholeUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    #Prevents general user deletion
+    admin: bool = Depends(get_admin_user)
 ):
     """Update a pothole"""
     pothole = db.query(Pothole).filter(Pothole.id == pothole_id).first()
@@ -151,7 +176,12 @@ def report_pothole_again(pothole_id: int, db: Session = Depends(get_db)):
     return {"message": "Pothole reported", "occurrences": pothole.occurrences}
 
 @app.delete("/potholes/{pothole_id}", status_code=204)
-def delete_pothole(pothole_id: int, db: Session = Depends(get_db)):
+def delete_pothole(
+    pothole_id: int, 
+    db: Session = Depends(get_db),
+    #Prevents general user deletion
+    admin: bool = Depends(get_admin_user)
+    ):
     """Delete a pothole record"""
     pothole = db.query(Pothole).filter(Pothole.id == pothole_id).first()
     if not pothole:
