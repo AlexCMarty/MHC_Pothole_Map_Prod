@@ -7,12 +7,15 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import List, Optional
+import os
 import requests
 import uuid
 import pathlib
 
-# Database configuration
-DATABASE_URL = "sqlite:///./potholes.db"
+# Database configuration — path anchored to this file so it's stable regardless of cwd.
+# Override with DB_PATH env var when using a Render persistent disk (e.g. /data/potholes.db).
+_default_db = pathlib.Path(__file__).parent / "potholes.db"
+DATABASE_URL = f"sqlite:///{os.environ.get('DB_PATH', str(_default_db))}"
 
 UPLOADS_DIR = pathlib.Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
@@ -89,6 +92,12 @@ class PotholeResponse(BaseModel):
     last_reported: datetime
     occurrences: int
 
+# Admin credentials — set these as environment variables in production.
+# The defaults match the original dev values so local runs keep working unchanged.
+ADMIN_EMAIL    = os.environ.get("ADMIN_EMAIL",    "admin@nyc.gov")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "password123")
+ADMIN_TOKEN    = os.environ.get("ADMIN_TOKEN",    "your_super_secret_admin_key")
+
 # Authentication
 class LoginRequest(BaseModel):
     email: str
@@ -102,7 +111,7 @@ async def get_admin_user(api_key: str = Security(api_key_header)):
     Checks if the provided API key is valid.
     Used to protect SENSITIVE routes (PUT, DELETE).
     """
-    if api_key == "your_super_secret_admin_key":
+    if api_key == ADMIN_TOKEN:
         return True
     
     raise HTTPException(
@@ -136,9 +145,8 @@ app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 # auth continued 
 @app.post("/login")
 async def login(data: LoginRequest):
-    # REPLACE THIS with actual database user verification
-    if data.email == "admin@nyc.gov" and data.password == "password123":
-        return {"access_token": "your_super_secret_admin_key", "token_type": "bearer"}
+    if data.email == ADMIN_EMAIL and data.password == ADMIN_PASSWORD:
+        return {"access_token": ADMIN_TOKEN, "token_type": "bearer"}
     
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
