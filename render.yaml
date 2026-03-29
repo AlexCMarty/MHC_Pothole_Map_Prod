@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: pothole-api
+    runtime: python
+    rootDir: API
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main_api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      # Set DB_PATH only if you attach a Render Persistent Disk (e.g. /data/potholes.db).
+      # Leave unset to use the default path inside the API directory.
+      # - key: DB_PATH
+      #   value: /data/potholes.db
