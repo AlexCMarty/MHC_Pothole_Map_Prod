@@ -15,6 +15,7 @@ export type Pothole = {
   location_description?: string | null;
   severity?: string | null;
   occurrences: number;
+  deleted?: string | null;
 };
 
 // Dynamically import the map so it doesn't break SSR
@@ -34,7 +35,7 @@ export default function Home() {
   useEffect(() => {
     fetch(`${API_BASE}/potholes/?limit=1000`)
       .then((res) => res.json())
-      .then((data: Pothole[]) => setPotholes(data))
+      .then((data: Pothole[]) => setPotholes(data.filter(p => !p.deleted)))
       .catch((err) => console.error('Failed to load potholes:', err));
   }, []);
 
